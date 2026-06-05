@@ -24,30 +24,30 @@ def analyze_goal(request: GoalAnalyzeRequest) -> GoalAnalyzeResponse:
     Raises:
         ValueError: If OpenAI response parsing fails.
     """
-    prompt = f"""
-You are a practical goal mentor.
-
-Analyze this goal and return a strict structured response.
-
-Goal: {request.goal}
-Deadline months: {request.deadline_months}
-Weekly hours: {request.weekly_hours}
-Current level: {request.current_level}
-
-Be realistic, specific, and concise.
-"""
-    
     response = client.responses.parse(
         model=MODEL,
         input=[
             {
                 "role": "system",
-                "content": "You analyze personal/professional goals and return structured output only.",
+                "content": (
+                    "You are a strict, experienced goal coach. "
+                    "You evaluate goals honestly — no motivation fluff. "
+                    "Identify real risks, give specific actionable milestones, "
+                    "and assess feasibility based on time and skill level. "
+                    "Return structured output only."
+                ),
             },
             {
                 "role": "user",
-                "content": prompt,
-            }
+                "content": (
+                    f"Goal: {request.goal}\n"
+                    f"Deadline: {request.deadline_months} months\n"
+                    f"Weekly availability: {request.weekly_hours} hours\n"
+                    f"Current level: {request.current_level}\n\n"
+                    "Analyze feasibility, identify the top risks, "
+                    "and provide concrete monthly milestones."
+                ),
+            },
         ],
         text_format=GoalAnalyzeResponse,
     )
