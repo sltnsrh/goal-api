@@ -6,10 +6,24 @@ from app.schemas import GoalAnalyzeRequest, GoalAnalyzeResponse
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    timeout=20.0,
+)
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-nano")
 
-def analyze_goal(request: GoalAnalyzeRequest) -> GoalAnalyzeResponse | None:
+def analyze_goal(request: GoalAnalyzeRequest) -> GoalAnalyzeResponse:
+    """Analyze a goal using OpenAI and return structured analysis.
+
+    Args:
+        request: The goal analysis request with goal details.
+
+    Returns:
+        Structured goal analysis response from OpenAI.
+
+    Raises:
+        ValueError: If OpenAI response parsing fails.
+    """
     prompt = f"""
 You are a practical goal mentor.
 
@@ -38,4 +52,6 @@ Be realistic, specific, and concise.
         text_format=GoalAnalyzeResponse,
     )
 
+    if response.output_parsed is None:
+        raise ValueError("Failed to parse goal analysis response")
     return response.output_parsed
