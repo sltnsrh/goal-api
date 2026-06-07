@@ -1,10 +1,18 @@
+from datetime import date
 from enum import Enum
+from typing import Optional
 from pydantic import BaseModel, Field
 
 class RiskLevel(str, Enum):
     low = "low"
     medium = "medium"
     high = "high"
+
+class Milestone(BaseModel):
+    title: str
+    start_date: date
+    end_date: date
+    total_hours: int
 
 class GoalAnalyzeRequest(BaseModel):
     goal: str = Field(min_length=5, max_length=500)
@@ -20,3 +28,15 @@ class GoalAnalyzeResponse(BaseModel):
     missing_inputs: list[str]
     recommendation: str
     first_action: str
+
+class GoalPlanRequest(BaseModel):
+    goal: str = Field(min_length=5, max_length=500)
+    deadline_months: int = Field(gt=0, le=120)
+    weekly_hours: int = Field(gt=0, le=168)
+    current_level: str = Field(min_length=3, max_length=500)
+    analysis: Optional[GoalAnalyzeResponse] = None
+
+class GoalPlanResponse(BaseModel):
+    current_phase: str
+    milestones: list[Milestone]
+    next_week_tasks: list[str]

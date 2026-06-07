@@ -10,7 +10,7 @@ client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     timeout=20.0,
 )
-MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-nano")
+MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5-mini")
 
 def analyze_goal(request: GoalAnalyzeRequest) -> GoalAnalyzeResponse:
     """Analyze a goal using OpenAI and return structured analysis.
