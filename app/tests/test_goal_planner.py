@@ -1,13 +1,9 @@
 import pytest
 from datetime import date
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
-from app.main import app
-from app.schemas import GoalAnalyzeResponse, GoalPlanRequest, GoalPlanResponse, RiskLevel
+from app.schemas import GoalAnalyzeResponse, GoalPlanRequest, RiskLevel
 from app.services.goal_planner import _GoalPlanRaw, _MilestoneRaw, _build_user_prompt, generate_plan
-
-client = TestClient(app)
 
 _VALID_REQUEST = {
     "goal": "Become a stronger backend engineer",
@@ -79,134 +75,7 @@ def test_build_user_prompt_with_analysis():
     assert "Keep next_week_tasks to 3 to 5 actions" in prompt
     assert "total_hours" not in prompt
     assert "<specific book>" not in prompt
-    assert "Do not use placeholder text" in prompt
-
-
-# ============================================================================
-# VALIDATION TESTS
-# ============================================================================
-
-def test_plan_missing_goal_field():
-    payload = {k: v for k, v in _VALID_REQUEST.items() if k != "goal"}
-    assert client.post("/goals/plan", json=payload).status_code == 422
-
-
-def test_plan_goal_too_short():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "goal": "ab"}).status_code == 422
-
-
-def test_plan_goal_too_long():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "goal": "a" * 501}).status_code == 422
-
-
-def test_plan_deadline_months_zero():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "deadline_months": 0}).status_code == 422
-
-
-def test_plan_deadline_months_too_high():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "deadline_months": 121}).status_code == 422
-
-
-def test_plan_weekly_hours_zero():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "weekly_hours": 0}).status_code == 422
-
-
-def test_plan_weekly_hours_too_high():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "weekly_hours": 169}).status_code == 422
-
-
-def test_plan_current_level_too_short():
-    assert client.post("/goals/plan", json={**_VALID_REQUEST, "current_level": "ab"}).status_code == 422
-
-
-# ============================================================================
-# RESPONSE STRUCTURE TESTS
-# ============================================================================
-
-@patch("app.services.goal_planner.client.responses.parse")
-def test_plan_response_structure(mock_parse):
-    mock_parse.return_value = _make_mock_parse()
-    response = client.post("/goals/plan", json=_VALID_REQUEST)
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data["current_phase"], str)
-    assert isinstance(data["milestones"], list)
-    assert isinstance(data["next_week_tasks"], list)
-    milestone = data["milestones"][0]
-    assert isinstance(milestone["title"], str)
-    assert isinstance(milestone["start_date"], str)
-    assert isinstance(milestone["end_date"], str)
-    assert isinstance(milestone["total_hours"], int)
-
-
-# ============================================================================
-# HAPPY PATH TESTS
-# ============================================================================
-
-@patch("app.services.goal_planner.client.responses.parse")
-def test_plan_happy_path_without_analysis(mock_parse):
-    mock_parse.return_value = _make_mock_parse()
-    response = client.post("/goals/plan", json=_VALID_REQUEST)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["current_phase"] == "Foundations"
-    assert len(data["milestones"]) == 2
-    assert len(data["next_week_tasks"]) == 3
-    user_message = mock_parse.call_args.kwargs["input"][1]["content"]
-    assert "Prior analysis: none" in user_message
-    assert "Start date:" in user_message
-
-
-@patch("app.services.goal_planner.client.responses.parse")
-def test_plan_happy_path_with_analysis(mock_parse):
-    mock_parse.return_value = _make_mock_parse()
-    payload = {
-        **_VALID_REQUEST,
-        "analysis": {
-            "clarified_goal": "Become a stronger backend engineer",
-            "feasible": True,
-            "risk_level": "medium",
-            "main_risks": ["Time pressure", "Scope creep"],
-            "missing_inputs": [],
-            "recommendation": "Ship one project end to end",
-            "first_action": "Pick a stack and commit",
-        },
-    }
-    response = client.post("/goals/plan", json=payload)
-    assert response.status_code == 200
-    user_message = mock_parse.call_args.kwargs["input"][1]["content"]
-    assert "risk_level: medium" in user_message
-    assert "Time pressure" in user_message
-
-
-@patch("app.services.goal_planner.client.responses.parse")
-def test_plan_ai_provider_error_returns_502(mock_parse):
-    mock_parse.side_effect = ValueError("OpenAI connection failed")
-    response = client.post("/goals/plan", json=_VALID_REQUEST)
-    assert response.status_code == 502
-    detail = response.json()["detail"]
-    assert detail["code"] == "AI_PROVIDER_ERROR"
-    assert "OpenAI connection failed" in detail["message"]
-
-
-def test_plan_returns_422_when_analysis_not_feasible():
-    payload = {
-        **_VALID_REQUEST,
-        "analysis": {
-            "clarified_goal": "Become a surgeon",
-            "feasible": False,
-            "risk_level": "high",
-            "main_risks": ["Insufficient time", "No medical background"],
-            "missing_inputs": [],
-            "recommendation": "Extend timeline to at least 10 years",
-            "first_action": "Research medical school prerequisites",
-        },
-    }
-    response = client.post("/goals/plan", json=payload)
-    assert response.status_code == 422
-    detail = response.json()["detail"]
-    assert detail["code"] == "GOAL_NOT_FEASIBLE"
-    assert "Extend timeline" in detail["message"]
+    assert "No extra commentary, no questions, and no reasoning trace." in prompt
 
 
 @patch("app.services.goal_planner.client.responses.parse")

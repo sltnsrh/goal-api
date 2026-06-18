@@ -12,5 +12,7 @@ AI backend for goal analysis and planning.
 
 ## Run locally
 
+Set `SQLITE_DATABASE_PATH` if you want a different SQLite file location. The default is `./data/goals.db`.
+
 ```bash
 uvicorn app.main:app --reload

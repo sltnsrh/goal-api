@@ -1,0 +1,134 @@
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+from sqlalchemy.orm import sessionmaker
+from fastapi.testclient import TestClient
+from unittest.mock import patch
+
+from app.db.database import Base, get_db
+from app.db import models  # noqa: F401
+from app.main import app
+from app.schemas import GoalAnalyzeResponse, RiskLevel
+
+_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+_TestSession = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+
+
+def _get_test_db():
+    db = _TestSession()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+Base.metadata.create_all(bind=_engine)
+app.dependency_overrides[get_db] = _get_test_db
+client = TestClient(app)
+
+_VALID_PAYLOAD = {
+    "goal": "Run a half marathon",
+    "deadline_months": 6,
+    "weekly_hours": 5,
+    "current_level": "Can run 5km comfortably",
+}
+
+_MOCK_ANALYSIS = GoalAnalyzeResponse(
+    clarified_goal="Complete a half marathon in 6 months",
+    feasible=True,
+    risk_level=RiskLevel.medium,
+    main_risks=["Injury risk", "Inconsistent training"],
+    missing_inputs=[],
+    recommendation="Follow a structured training plan",
+    first_action="Register for a local race",
+)
+
+
+# ============================================================================
+# POST /goals
+# ============================================================================
+
+def test_create_goal_returns_201():
+    response = client.post("/goals", json=_VALID_PAYLOAD)
+    assert response.status_code == 201
+
+
+def test_create_goal_returns_id_and_location_header():
+    response = client.post("/goals", json=_VALID_PAYLOAD)
+    data = response.json()
+    assert "id" in data
+    assert response.headers["location"] == f"/goals/{data['id']}"
+
+
+def test_create_goal_returns_correct_fields():
+    response = client.post("/goals", json=_VALID_PAYLOAD)
+    data = response.json()
+    assert data["goal"] == _VALID_PAYLOAD["goal"]
+    assert data["deadline_months"] == _VALID_PAYLOAD["deadline_months"]
+    assert data["weekly_hours"] == _VALID_PAYLOAD["weekly_hours"]
+    assert data["current_level"] == _VALID_PAYLOAD["current_level"]
+
+
+def test_create_goal_validation_fails_on_short_goal():
+    response = client.post("/goals", json={**_VALID_PAYLOAD, "goal": "ab"})
+    assert response.status_code == 422
+
+
+# ============================================================================
+# GET /goals/{goal_id}
+# ============================================================================
+
+def test_get_goal_returns_200():
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    response = client.get(f"/goals/{goal_id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == goal_id
+
+
+def test_get_goal_returns_404_for_unknown_id():
+    response = client.get("/goals/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "GOAL_NOT_FOUND"
+
+
+# ============================================================================
+# POST /goals/{goal_id}/analyze
+# ============================================================================
+
+@patch("app.services.goal_service.analyze_goal")
+def test_analyze_saved_goal_returns_200(mock_analyze):
+    mock_analyze.return_value = _MOCK_ANALYSIS
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    response = client.post(f"/goals/{goal_id}/analyze")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["feasible"] is True
+    assert data["risk_level"] == "medium"
+
+
+@patch("app.services.goal_service.analyze_goal")
+def test_analyze_saved_goal_persists_analysis(mock_analyze):
+    mock_analyze.return_value = _MOCK_ANALYSIS
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    client.post(f"/goals/{goal_id}/analyze")
+    db = _TestSession()
+    entity = db.query(models.GoalEntity).filter(models.GoalEntity.id == goal_id).first()
+    db.close()
+    assert entity.analysis_json is not None
+
+
+def test_analyze_goal_returns_404_for_unknown_id():
+    response = client.post("/goals/00000000-0000-0000-0000-000000000000/analyze")
+    assert response.status_code == 404
+
+
+@patch("app.services.goal_service.analyze_goal")
+def test_analyze_goal_returns_502_on_ai_error(mock_analyze):
+    mock_analyze.side_effect = ValueError("OpenAI timeout")
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    response = client.post(f"/goals/{goal_id}/analyze")
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "AI_PROVIDER_ERROR"
