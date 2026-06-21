@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 from app.db.models import GoalEntity
-from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, RiskLevel
-from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal
+from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest, RiskLevel
+from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, update_goal
 
 
 _CREATE_REQUEST = GoalCreateRequest(
@@ -81,3 +81,23 @@ def test_analyze_saved_goal_builds_request_and_persists_analysis():
     assert request.weekly_hours == goal.weekly_hours
     assert request.current_level == goal.current_level
     mock_save_analysis.assert_called_once_with(db, goal, analysis.model_dump_json())
+
+
+def test_update_goal_delegates_to_repository():
+    db = MagicMock()
+    request = GoalUpdateRequest(
+        goal="Update goal",
+        weekly_hours=10,
+    )
+    expected_entity = GoalEntity(
+        id="goal-123",
+        deadline_months=6,
+        weekly_hours=10,
+        current_level="Intermediate Python",
+    )
+
+    with patch("app.services.goal_service.update_goal_in_repository", return_value=expected_entity) as mock_update_goal:
+        result = update_goal(db, "goal-123", request)
+    
+    assert result is expected_entity
+    mock_update_goal.assert_called_once_with(db, "goal-123", request)

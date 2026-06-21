@@ -2,8 +2,8 @@ from typing import Optional
 import uuid
 from sqlalchemy.orm import Session
 from app.db.models import GoalEntity
-from app.schemas import GoalAnalyzeRequest, GoalAnalyzeResponse, GoalCreateRequest
-from app.repositories.goal_repository import create_goal, get_goal_by_id, save_analysis
+from app.schemas import GoalAnalyzeRequest, GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest
+from app.repositories.goal_repository import create_goal, get_goal_by_id, save_analysis, update_goal as update_goal_in_repository
 from app.services.goal_analyzer import analyze_goal
 
 
@@ -33,3 +33,6 @@ def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:
     analysis = analyze_goal(request)
     save_analysis(db, goal, analysis.model_dump_json())
     return analysis
+
+def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> Optional[GoalEntity]:
+    return update_goal_in_repository(db, goal_id, request)

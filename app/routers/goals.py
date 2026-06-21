@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.schemas import GoalCreateRequest, GoalResponse, GoalAnalyzeResponse
-from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal
+from app.schemas import GoalCreateRequest, GoalResponse, GoalAnalyzeResponse, GoalUpdateRequest
+from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, update_goal
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -40,3 +40,14 @@ def analyze_goal_endpoint(goal_id: str, db: Session = Depends(get_db)) -> GoalAn
             status_code=502,
             detail={"code": "AI_PROVIDER_ERROR", "message": str(e)},
         )
+    
+@router.patch("/{goal_id}", response_model=GoalResponse)
+def update_goal_endpoint(
+    goal_id: str,
+    request: GoalUpdateRequest,
+    db: Session = Depends(get_db),
+) -> GoalResponse:
+    entity = update_goal(db, goal_id, request)
+    if entity is None:
+        raise HTTPException(status_code=404, detail=_NOT_FOUND)
+    return GoalResponse.model_validate(entity)

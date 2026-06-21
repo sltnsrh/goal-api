@@ -132,3 +132,52 @@ def test_analyze_goal_returns_502_on_ai_error(mock_analyze):
     response = client.post(f"/goals/{goal_id}/analyze")
     assert response.status_code == 502
     assert response.json()["detail"]["code"] == "AI_PROVIDER_ERROR"
+
+
+_UPDATE_PAYLOAD = {
+    "goal": "Run a full marathon",
+    "weekly_hours": 7,
+}
+
+def test_patch_goal_returns_200_and_updates_fields():
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+
+    response = client.patch(f"/goals/{goal_id}", json=_UPDATE_PAYLOAD)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == goal_id
+    assert data["goal"] == _UPDATE_PAYLOAD["goal"]
+    assert data["weekly_hours"] == _UPDATE_PAYLOAD["weekly_hours"]
+    assert data["deadline_months"] == _VALID_PAYLOAD["deadline_months"]
+    assert data["current_level"] == _VALID_PAYLOAD["current_level"]
+
+def test_patch_goal_returns_404_for_unknown_id():
+    response = client.patch("/goals/00000000-0000-0000-0000-000000000000", json=_UPDATE_PAYLOAD)
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "GOAL_NOT_FOUND"
+
+def test_patch_goal_returns_422_for_empty_body():
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    response = client.patch(f"/goals/{goal_id}", json={})
+    assert response.status_code == 422
+
+def test_patch_goal_returns_422_for_invalid_values():
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    response = client.patch(f"/goals/{goal_id}", json={"weekly_hours": 0})
+    assert response.status_code == 422
+
+
+@patch("app.services.goal_service.analyze_goal")
+def test_patch_goal_clears_previous_analysis(mock_analyze):
+    mock_analyze.return_value = _MOCK_ANALYSIS
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+    client.post(f"/goals/{goal_id}/analyze")
+
+    response = client.patch(f"/goals/{goal_id}", json=_UPDATE_PAYLOAD)
+
+    assert response.status_code == 200
+    db = _TestSession()
+    entity = db.query(models.GoalEntity).filter(models.GoalEntity.id == goal_id).first()
+    db.close()
+    assert entity.analysis_json is None  # type: ignore[assignment] 
