@@ -29,6 +29,13 @@ class GoalResponse(BaseModel):
     weekly_hours: int
     current_level: str
 
+
+class GoalListResponse(BaseModel):
+    items: list[GoalResponse]
+    total: int
+    limit: int
+    offset: int
+
 class GoalAnalyzeRequest(BaseModel):
     goal: str = Field(min_length=5, max_length=500)
     deadline_months: int = Field(gt=0, le=120)

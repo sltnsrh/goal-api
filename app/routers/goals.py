@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.schemas import GoalCreateRequest, GoalResponse, GoalAnalyzeResponse, GoalUpdateRequest
-from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, update_goal
+from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalListResponse, GoalResponse, GoalUpdateRequest
+from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, list_goals_with_pagination, update_goal
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -18,6 +18,21 @@ def create_goal_endpoint(
     entity = create_new_goal(db, request)
     response.headers["Location"] = f"/goals/{entity.id}"
     return GoalResponse.model_validate(entity)
+
+
+@router.get("", response_model=GoalListResponse)
+def list_goals_endpoint(
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> GoalListResponse:
+    items, total = list_goals_with_pagination(db, limit, offset)
+    return GoalListResponse(
+        items=[GoalResponse.model_validate(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{goal_id}", response_model=GoalResponse)

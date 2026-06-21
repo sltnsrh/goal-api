@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 from app.db.models import GoalEntity
 from app.schemas import GoalAnalyzeRequest, GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest
-from app.repositories.goal_repository import create_goal, get_goal_by_id, save_analysis, update_goal as update_goal_in_repository
+from app.repositories.goal_repository import create_goal, get_goal_by_id, list_goals, save_analysis, update_goal as update_goal_in_repository
 from app.services.goal_analyzer import analyze_goal
 
 
@@ -20,6 +20,10 @@ def create_new_goal(db: Session, request: GoalCreateRequest) -> GoalEntity:
 
 def get_goal(db: Session, goal_id: str) -> Optional[GoalEntity]:
     return get_goal_by_id(db, goal_id)
+
+
+def list_goals_with_pagination(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], int]:
+    return list_goals(db, limit, offset)
 
 
 def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:

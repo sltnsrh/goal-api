@@ -78,6 +78,45 @@ def test_create_goal_validation_fails_on_short_goal():
 
 
 # ============================================================================
+# GET /goals
+# ============================================================================
+
+def test_list_goals_returns_paginated_items():
+    client.post("/goals", json=_VALID_PAYLOAD)
+    client.post(
+        "/goals",
+        json={**_VALID_PAYLOAD, "goal": "Learn FastAPI deeply"},
+    )
+
+    response = client.get("/goals", params={"limit": 1, "offset": 0})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 2
+    assert data["limit"] == 1
+    assert data["offset"] == 0
+    assert len(data["items"]) == 1
+    assert "id" in data["items"][0]
+    assert "goal" in data["items"][0]
+
+
+def test_list_goals_returns_next_page():
+    client.post("/goals", json=_VALID_PAYLOAD)
+    client.post(
+        "/goals",
+        json={**_VALID_PAYLOAD, "goal": "Learn FastAPI deeply"},
+    )
+
+    response = client.get("/goals", params={"limit": 1, "offset": 1})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["limit"] == 1
+    assert data["offset"] == 1
+    assert len(data["items"]) == 1
+
+
+# ============================================================================
 # GET /goals/{goal_id}
 # ============================================================================
 

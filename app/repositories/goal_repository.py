@@ -15,6 +15,18 @@ def get_goal_by_id(db: Session, goal_id: str) -> Optional[GoalEntity]:
     return db.query(GoalEntity).filter(GoalEntity.id == goal_id).first()
 
 
+def list_goals(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], int]:
+    query = db.query(GoalEntity)
+    total = query.count()
+    items = (
+        query.order_by(GoalEntity.created_at.desc(), GoalEntity.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
 def save_analysis(db: Session, goal: GoalEntity, analysis_json: str) -> GoalEntity:
     goal.analysis_json = analysis_json #type: ignore
     db.commit()
