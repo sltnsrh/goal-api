@@ -2,7 +2,14 @@ from typing import Optional
 import uuid
 from sqlalchemy.orm import Session
 from app.db.models import GoalEntity
-from app.schemas import GoalAnalyzeRequest, GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest
+from app.schemas import (
+    AnalysisStatus,
+    GoalAnalyzeRequest,
+    GoalAnalyzeResponse,
+    GoalCreateRequest,
+    GoalDetailResponse,
+    GoalUpdateRequest,
+)
 from app.repositories.goal_repository import create_goal, get_goal_by_id, list_goals, save_analysis, update_goal as update_goal_in_repository
 from app.services.goal_analyzer import analyze_goal
 
@@ -24,6 +31,28 @@ def get_goal(db: Session, goal_id: str) -> Optional[GoalEntity]:
 
 def list_goals_with_pagination(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], int]:
     return list_goals(db, limit, offset)
+
+
+def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
+    analysis = None
+    analysis_status = AnalysisStatus.not_analyzed
+
+    if goal.analysis_json:
+        try:
+            analysis = GoalAnalyzeResponse.model_validate_json(goal.analysis_json)
+            analysis_status = AnalysisStatus.analyzed
+        except Exception as exc:  # pragma: no cover - defensive guard for corrupted storage
+            raise ValueError("Stored goal analysis is invalid") from exc
+
+    return GoalDetailResponse(
+        id=goal.id,
+        goal=goal.goal,
+        deadline_months=goal.deadline_months,
+        weekly_hours=goal.weekly_hours,
+        current_level=goal.current_level,
+        analysis_status=analysis_status,
+        analysis=analysis,
+    )
 
 
 def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:

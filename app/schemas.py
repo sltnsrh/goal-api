@@ -8,6 +8,12 @@ class RiskLevel(str, Enum):
     medium = "medium"
     high = "high"
 
+
+class AnalysisStatus(str, Enum):
+    not_analyzed = "not_analyzed"
+    analyzed = "analyzed"
+
+
 class Milestone(BaseModel):
     title: str
     start_date: date
@@ -36,12 +42,6 @@ class GoalListResponse(BaseModel):
     limit: int
     offset: int
 
-class GoalAnalyzeRequest(BaseModel):
-    goal: str = Field(min_length=5, max_length=500)
-    deadline_months: int = Field(gt=0, le=120)
-    weekly_hours: int = Field(gt=0, le=168)
-    current_level: str = Field(min_length=3, max_length=500)
-
 class GoalAnalyzeResponse(BaseModel):
     clarified_goal: str
     feasible: bool
@@ -50,6 +50,24 @@ class GoalAnalyzeResponse(BaseModel):
     missing_inputs: list[str]
     recommendation: str
     first_action: str
+
+class GoalDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    goal: str
+    deadline_months: int
+    weekly_hours: int
+    current_level: str
+    analysis_status: AnalysisStatus
+    analysis: Optional["GoalAnalyzeResponse"] = None
+
+class GoalAnalyzeRequest(BaseModel):
+    goal: str = Field(min_length=5, max_length=500)
+    deadline_months: int = Field(gt=0, le=120)
+    weekly_hours: int = Field(gt=0, le=168)
+    current_level: str = Field(min_length=3, max_length=500)
+
 
 class GoalPlanRequest(BaseModel):
     goal: str = Field(min_length=5, max_length=500)

@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 from app.db.models import GoalEntity
-from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest, RiskLevel
-from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, update_goal
+from app.schemas import AnalysisStatus, GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest, RiskLevel
+from app.services.goal_service import analyze_saved_goal, build_goal_detail_response, create_new_goal, get_goal, update_goal
 
 
 _CREATE_REQUEST = GoalCreateRequest(
@@ -98,6 +98,50 @@ def test_update_goal_delegates_to_repository():
 
     with patch("app.services.goal_service.update_goal_in_repository", return_value=expected_entity) as mock_update_goal:
         result = update_goal(db, "goal-123", request)
-    
+
     assert result is expected_entity
     mock_update_goal.assert_called_once_with(db, "goal-123", request)
+
+
+def test_build_goal_detail_response_without_analysis():
+    goal = GoalEntity(
+        id="goal-123",
+        goal="Build a portfolio project",
+        deadline_months=4,
+        weekly_hours=8,
+        current_level="Intermediate Python",
+    )
+
+    result = build_goal_detail_response(goal)
+
+    assert result.id == goal.id
+    assert result.analysis_status == AnalysisStatus.not_analyzed
+    assert result.analysis is None
+
+
+def test_build_goal_detail_response_with_analysis():
+    analysis = GoalAnalyzeResponse(
+        clarified_goal="Build a portfolio project in 4 months",
+        feasible=True,
+        risk_level=RiskLevel.medium,
+        main_risks=["Scope creep"],
+        missing_inputs=[],
+        recommendation="Ship one small project end to end",
+        first_action="Define the project scope",
+    )
+    goal = GoalEntity(
+        id="goal-123",
+        goal="Build a portfolio project",
+        deadline_months=4,
+        weekly_hours=8,
+        current_level="Intermediate Python",
+        analysis_json=analysis.model_dump_json(),
+    )
+
+    result = build_goal_detail_response(goal)
+
+    assert result.analysis_status == AnalysisStatus.analyzed
+    assert result.analysis is not None
+    assert result.analysis.clarified_goal == analysis.clarified_goal
+    assert result.analysis.feasible == analysis.feasible
+    assert result.analysis.risk_level == analysis.risk_level

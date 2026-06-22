@@ -124,7 +124,10 @@ def test_get_goal_returns_200():
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
     response = client.get(f"/goals/{goal_id}")
     assert response.status_code == 200
-    assert response.json()["id"] == goal_id
+    data = response.json()
+    assert data["id"] == goal_id
+    assert data["analysis_status"] == "not_analyzed"
+    assert data["analysis"] is None
 
 
 def test_get_goal_returns_404_for_unknown_id():
@@ -157,6 +160,23 @@ def test_analyze_saved_goal_persists_analysis(mock_analyze):
     entity = db.query(models.GoalEntity).filter(models.GoalEntity.id == goal_id).first()
     db.close()
     assert entity.analysis_json is not None
+
+
+@patch("app.services.goal_service.analyze_goal")
+def test_get_goal_returns_analysis_after_analyze(mock_analyze):
+    mock_analyze.return_value = _MOCK_ANALYSIS
+    goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
+
+    analyze_response = client.post(f"/goals/{goal_id}/analyze")
+    assert analyze_response.status_code == 200
+
+    response = client.get(f"/goals/{goal_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["analysis_status"] == "analyzed"
+    assert data["analysis"]["feasible"] is True
+    assert data["analysis"]["risk_level"] == "medium"
+    assert data["analysis"]["clarified_goal"] == _MOCK_ANALYSIS.clarified_goal
 
 
 def test_analyze_goal_returns_404_for_unknown_id():
@@ -216,6 +236,10 @@ def test_patch_goal_clears_previous_analysis(mock_analyze):
     response = client.patch(f"/goals/{goal_id}", json=_UPDATE_PAYLOAD)
 
     assert response.status_code == 200
+    get_response = client.get(f"/goals/{goal_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["analysis_status"] == "not_analyzed"
+    assert get_response.json()["analysis"] is None
     db = _TestSession()
     entity = db.query(models.GoalEntity).filter(models.GoalEntity.id == goal_id).first()
     db.close()

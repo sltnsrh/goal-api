@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalListResponse, GoalResponse, GoalUpdateRequest
-from app.services.goal_service import analyze_saved_goal, create_new_goal, get_goal, list_goals_with_pagination, update_goal
+from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalDetailResponse, GoalListResponse, GoalResponse, GoalUpdateRequest
+from app.services.goal_service import analyze_saved_goal, build_goal_detail_response, create_new_goal, get_goal, list_goals_with_pagination, update_goal
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -35,12 +35,12 @@ def list_goals_endpoint(
     )
 
 
-@router.get("/{goal_id}", response_model=GoalResponse)
-def get_goal_endpoint(goal_id: str, db: Session = Depends(get_db)) -> GoalResponse:
+@router.get("/{goal_id}", response_model=GoalDetailResponse)
+def get_goal_endpoint(goal_id: str, db: Session = Depends(get_db)) -> GoalDetailResponse:
     entity = get_goal(db, goal_id)
     if entity is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
-    return GoalResponse.model_validate(entity)
+    return build_goal_detail_response(entity)
 
 
 @router.post("/{goal_id}/analyze", response_model=GoalAnalyzeResponse)
