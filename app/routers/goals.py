@@ -1,12 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalDetailResponse, GoalListResponse, GoalResponse, GoalUpdateRequest
-from app.services.goal_service import analyze_saved_goal, build_goal_detail_response, create_new_goal, get_goal, list_goals_with_pagination, update_goal
+from app.schemas import GoalAnalyzeResponse, GoalCreateRequest, GoalDetailResponse, GoalListResponse, GoalPlanResponse, GoalResponse, GoalUpdateRequest
+from app.services.goal_service import (
+    GoalPlanGenerationError,
+    GoalPlanNotReadyError,
+    analyze_saved_goal,
+    build_goal_detail_response,
+    create_new_goal,
+    generate_goal_plan,
+    get_goal,
+    list_goals_with_pagination,
+    update_goal,
+)
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
 _NOT_FOUND = {"code": "GOAL_NOT_FOUND", "message": "Goal not found"}
+_PLAN_NOT_READY = {"code": "GOAL_PLAN_NOT_READY", "message": "Goal must be analyzed and feasible before planning"}
 
 
 @router.post("", response_model=GoalResponse, status_code=201)
@@ -55,7 +66,22 @@ def analyze_goal_endpoint(goal_id: str, db: Session = Depends(get_db)) -> GoalAn
             status_code=502,
             detail={"code": "AI_PROVIDER_ERROR", "message": str(e)},
         )
-    
+
+@router.post("/{goal_id}/plan", response_model=GoalPlanResponse)
+def plan_goal_endpoint(goal_id: str, db: Session = Depends(get_db)) -> GoalPlanResponse:
+    entity = get_goal(db, goal_id)
+    if entity is None:
+        raise HTTPException(status_code=404, detail=_NOT_FOUND)
+    try:
+        return generate_goal_plan(entity)
+    except GoalPlanNotReadyError as e:
+        raise HTTPException(status_code=409, detail={"code": _PLAN_NOT_READY["code"], "message": str(e)})
+    except GoalPlanGenerationError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "AI_PROVIDER_ERROR", "message": str(e)},
+        )
+
 @router.patch("/{goal_id}", response_model=GoalResponse)
 def update_goal_endpoint(
     goal_id: str,

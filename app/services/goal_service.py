@@ -8,10 +8,21 @@ from app.schemas import (
     GoalAnalyzeResponse,
     GoalCreateRequest,
     GoalDetailResponse,
+    GoalPlanRequest,
+    GoalPlanResponse,
     GoalUpdateRequest,
 )
 from app.repositories.goal_repository import create_goal, get_goal_by_id, list_goals, save_analysis, update_goal as update_goal_in_repository
 from app.services.goal_analyzer import analyze_goal
+from app.services.goal_planner import generate_plan
+
+
+class GoalPlanNotReadyError(ValueError):
+    pass
+
+
+class GoalPlanGenerationError(ValueError):
+    pass
 
 
 def create_new_goal(db: Session, request: GoalCreateRequest) -> GoalEntity:
@@ -69,3 +80,28 @@ def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:
 
 def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> Optional[GoalEntity]:
     return update_goal_in_repository(db, goal_id, request)
+
+
+def _build_goal_plan_request(goal: GoalEntity) -> GoalPlanRequest:
+    if not goal.analysis_json:
+        raise GoalPlanNotReadyError("Goal must be analyzed before planning")
+
+    analysis = GoalAnalyzeResponse.model_validate_json(goal.analysis_json)
+    if not analysis.feasible:
+        raise GoalPlanNotReadyError("Goal analysis indicates the goal is not feasible")
+
+    return GoalPlanRequest(
+        goal=goal.goal,
+        deadline_months=goal.deadline_months,
+        weekly_hours=goal.weekly_hours,
+        current_level=goal.current_level,
+        analysis=analysis,
+    )
+
+
+def generate_goal_plan(goal: GoalEntity) -> GoalPlanResponse:
+    request = _build_goal_plan_request(goal)
+    try:
+        return generate_plan(request)
+    except ValueError as exc:
+        raise GoalPlanGenerationError("Failed to parse generated plan response") from exc
