@@ -155,6 +155,7 @@ def test_get_goal_returns_200():
     data = response.json()
     assert data["id"] == goal_id
     assert data["analysis_status"] == "not_analyzed"
+    assert data["analysis_updated_at"] is None
     assert data["analysis"] is None
 
 
@@ -202,6 +203,7 @@ def test_get_goal_returns_analysis_after_analyze(mock_analyze):
     assert response.status_code == 200
     data = response.json()
     assert data["analysis_status"] == "analyzed"
+    assert data["analysis_updated_at"] is not None
     assert data["analysis"]["feasible"] is True
     assert data["analysis"]["risk_level"] == "medium"
     assert data["analysis"]["clarified_goal"] == _MOCK_ANALYSIS.clarified_goal
@@ -316,6 +318,7 @@ def test_patch_goal_clears_previous_analysis(mock_analyze):
     get_response = client.get(f"/goals/{goal_id}")
     assert get_response.status_code == 200
     assert get_response.json()["analysis_status"] == "not_analyzed"
+    assert get_response.json()["analysis_updated_at"] is None
     assert get_response.json()["analysis"] is None
     db = _TestSession()
     entity = db.query(models.GoalEntity).filter(models.GoalEntity.id == goal_id).first()

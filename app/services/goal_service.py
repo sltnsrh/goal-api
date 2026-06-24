@@ -31,6 +31,8 @@ def create_new_goal(db: Session, request: GoalCreateRequest) -> GoalEntity:
         deadline_months=request.deadline_months,
         weekly_hours=request.weekly_hours,
         current_level=request.current_level,
+        analysis_status=AnalysisStatus.not_analyzed.value,
+        analysis_updated_at=None,
     )
     return goal_repository.create_goal(db, entity)
 
@@ -45,7 +47,7 @@ def list_goals_with_pagination(db: Session, limit: int, offset: int) -> tuple[li
 
 def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
     analysis = None
-    analysis_status = AnalysisStatus.not_analyzed
+    analysis_status = AnalysisStatus(goal.analysis_status or AnalysisStatus.not_analyzed.value)
 
     if goal.analysis_json:
         try:
@@ -53,6 +55,8 @@ def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
             analysis_status = AnalysisStatus.analyzed
         except Exception as exc:  # pragma: no cover - defensive guard for corrupted storage
             raise ValueError("Stored goal analysis is invalid") from exc
+    elif analysis_status == AnalysisStatus.analyzed:
+        raise ValueError("Stored goal analysis status is inconsistent with analysis payload")
 
     return GoalDetailResponse(
         id=goal.id,
@@ -61,6 +65,7 @@ def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
         weekly_hours=goal.weekly_hours,
         current_level=goal.current_level,
         analysis_status=analysis_status,
+        analysis_updated_at=goal.analysis_updated_at,
         analysis=analysis,
     )
 
@@ -84,7 +89,7 @@ def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> Option
 
 
 def _build_goal_plan_request(goal: GoalEntity) -> GoalPlanRequest:
-    if not goal.analysis_json:
+    if goal.analysis_status != AnalysisStatus.analyzed.value or not goal.analysis_json:
         raise GoalPlanNotReadyError("Goal must be analyzed before planning")
 
     analysis = GoalAnalyzeResponse.model_validate_json(goal.analysis_json)

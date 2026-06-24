@@ -1,7 +1,9 @@
 from typing import Optional
 
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.db.models import GoalEntity
+from app.schemas import AnalysisStatus
 
 
 def create_goal(db: Session, entity: GoalEntity) -> GoalEntity:
@@ -29,6 +31,8 @@ def list_goals(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], 
 
 def save_analysis(db: Session, goal: GoalEntity, analysis_json: str) -> GoalEntity:
     goal.analysis_json = analysis_json  # type: ignore[assignment]
+    goal.analysis_status = AnalysisStatus.analyzed.value
+    goal.analysis_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     db.refresh(goal)
     return goal
@@ -43,6 +47,8 @@ def update_goal(db: Session, goal_id: str, update_data: dict[str, object]) -> Op
         setattr(goal, field_name, value)
 
     goal.analysis_json = None  # type: ignore[assignment]
+    goal.analysis_status = AnalysisStatus.not_analyzed.value
+    goal.analysis_updated_at = None
     db.commit()
     db.refresh(goal)
     return goal

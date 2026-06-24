@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -69,6 +69,7 @@ class GoalDetailResponse(BaseModel):
     weekly_hours: int
     current_level: str
     analysis_status: AnalysisStatus
+    analysis_updated_at: Optional[datetime] = None
     analysis: Optional[GoalAnalyzeResponse] = None
 
 

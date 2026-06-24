@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from app.db.models import GoalEntity
@@ -136,11 +137,14 @@ def test_build_goal_detail_response_with_analysis():
         weekly_hours=8,
         current_level="Intermediate Python",
         analysis_json=analysis.model_dump_json(),
+        analysis_status="analyzed",
+        analysis_updated_at=datetime(2026, 6, 24, 12, 0, 0),
     )
 
     result = build_goal_detail_response(goal)
 
     assert result.analysis_status == AnalysisStatus.analyzed
+    assert result.analysis_updated_at == datetime(2026, 6, 24, 12, 0, 0)
     assert result.analysis is not None
     assert result.analysis.clarified_goal == analysis.clarified_goal
     assert result.analysis.feasible == analysis.feasible
