@@ -20,6 +20,7 @@ class Milestone(BaseModel):
     end_date: date
     total_hours: int
 
+
 class GoalCreateRequest(BaseModel):
     goal: str = Field(min_length=5, max_length=500)
     deadline_months: int = Field(gt=0, le=120)
@@ -42,6 +43,13 @@ class GoalListResponse(BaseModel):
     limit: int
     offset: int
 
+class GoalAnalyzeRequest(BaseModel):
+    goal: str = Field(min_length=5, max_length=500)
+    deadline_months: int = Field(gt=0, le=120)
+    weekly_hours: int = Field(gt=0, le=168)
+    current_level: str = Field(min_length=3, max_length=500)
+
+
 class GoalAnalyzeResponse(BaseModel):
     clarified_goal: str
     feasible: bool
@@ -50,6 +58,7 @@ class GoalAnalyzeResponse(BaseModel):
     missing_inputs: list[str]
     recommendation: str
     first_action: str
+
 
 class GoalDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -60,13 +69,7 @@ class GoalDetailResponse(BaseModel):
     weekly_hours: int
     current_level: str
     analysis_status: AnalysisStatus
-    analysis: Optional["GoalAnalyzeResponse"] = None
-
-class GoalAnalyzeRequest(BaseModel):
-    goal: str = Field(min_length=5, max_length=500)
-    deadline_months: int = Field(gt=0, le=120)
-    weekly_hours: int = Field(gt=0, le=168)
-    current_level: str = Field(min_length=3, max_length=500)
+    analysis: Optional[GoalAnalyzeResponse] = None
 
 
 class GoalPlanRequest(BaseModel):
@@ -76,10 +79,12 @@ class GoalPlanRequest(BaseModel):
     current_level: str = Field(min_length=3, max_length=500)
     analysis: Optional[GoalAnalyzeResponse] = None
 
+
 class GoalPlanResponse(BaseModel):
     current_phase: str
     milestones: list[Milestone]
     next_week_tasks: list[str]
+
 
 class GoalUpdateRequest(BaseModel):
     goal: str | None = Field(default=None, min_length=5, max_length=500)
@@ -91,9 +96,9 @@ class GoalUpdateRequest(BaseModel):
     def validate_update_payload(self) -> "GoalUpdateRequest":
         if not self.model_fields_set:
             raise ValueError("At least one field must be provided")
-        
+
         for field_name in self.model_fields_set:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} cannot be null")
-            
+
         return self

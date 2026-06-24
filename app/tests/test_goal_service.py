@@ -24,7 +24,7 @@ def test_create_new_goal_builds_entity_and_persists_it():
     )
 
     with patch("app.services.goal_service.uuid.uuid4", return_value="goal-123"), patch(
-        "app.services.goal_service.create_goal", return_value=expected_entity
+        "app.services.goal_service.goal_repository.create_goal", return_value=expected_entity
     ) as mock_create_goal:
         result = create_new_goal(db, _CREATE_REQUEST)
 
@@ -42,7 +42,7 @@ def test_get_goal_delegates_to_repository():
     db = MagicMock()
     expected_entity = MagicMock()
 
-    with patch("app.services.goal_service.get_goal_by_id", return_value=expected_entity) as mock_get_goal:
+    with patch("app.services.goal_service.goal_repository.get_goal_by_id", return_value=expected_entity) as mock_get_goal:
         result = get_goal(db, "goal-123")
 
     assert result is expected_entity
@@ -68,8 +68,8 @@ def test_analyze_saved_goal_builds_request_and_persists_analysis():
         first_action="Define the project scope",
     )
 
-    with patch("app.services.goal_service.analyze_goal", return_value=analysis) as mock_analyze_goal, patch(
-        "app.services.goal_service.save_analysis", return_value=goal
+    with patch("app.services.goal_service.goal_analyzer.analyze_goal", return_value=analysis) as mock_analyze_goal, patch(
+        "app.services.goal_service.goal_repository.save_analysis", return_value=goal
     ) as mock_save_analysis:
         result = analyze_saved_goal(db, goal)
 
@@ -96,11 +96,11 @@ def test_update_goal_delegates_to_repository():
         current_level="Intermediate Python",
     )
 
-    with patch("app.services.goal_service.update_goal_in_repository", return_value=expected_entity) as mock_update_goal:
+    with patch("app.services.goal_service.goal_repository.update_goal", return_value=expected_entity) as mock_update_goal:
         result = update_goal(db, "goal-123", request)
 
     assert result is expected_entity
-    mock_update_goal.assert_called_once_with(db, "goal-123", request)
+    mock_update_goal.assert_called_once_with(db, "goal-123", {"goal": "Update goal", "weekly_hours": 10})
 
 
 def test_build_goal_detail_response_without_analysis():

@@ -1,5 +1,5 @@
-from typing import Optional
 import uuid
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.db.models import GoalEntity
 from app.schemas import (
@@ -12,9 +12,8 @@ from app.schemas import (
     GoalPlanResponse,
     GoalUpdateRequest,
 )
-from app.repositories.goal_repository import create_goal, get_goal_by_id, list_goals, save_analysis, update_goal as update_goal_in_repository
-from app.services.goal_analyzer import analyze_goal
-from app.services.goal_planner import generate_plan
+from app.repositories import goal_repository
+from app.services import goal_analyzer, goal_planner
 
 
 class GoalPlanNotReadyError(ValueError):
@@ -33,15 +32,15 @@ def create_new_goal(db: Session, request: GoalCreateRequest) -> GoalEntity:
         weekly_hours=request.weekly_hours,
         current_level=request.current_level,
     )
-    return create_goal(db, entity)
+    return goal_repository.create_goal(db, entity)
 
 
 def get_goal(db: Session, goal_id: str) -> Optional[GoalEntity]:
-    return get_goal_by_id(db, goal_id)
+    return goal_repository.get_goal_by_id(db, goal_id)
 
 
 def list_goals_with_pagination(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], int]:
-    return list_goals(db, limit, offset)
+    return goal_repository.list_goals(db, limit, offset)
 
 
 def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
@@ -68,18 +67,20 @@ def build_goal_detail_response(goal: GoalEntity) -> GoalDetailResponse:
 
 def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:
     request = GoalAnalyzeRequest(
-        goal=goal.goal, # type: ignore
-        deadline_months=goal.deadline_months, # type: ignore
-        weekly_hours=goal.weekly_hours, # type: ignore
-        current_level=goal.current_level, # type: ignore
+        goal=goal.goal,
+        deadline_months=goal.deadline_months,
+        weekly_hours=goal.weekly_hours,
+        current_level=goal.current_level,
     )
 
-    analysis = analyze_goal(request)
-    save_analysis(db, goal, analysis.model_dump_json())
+    analysis = goal_analyzer.analyze_goal(request)
+    goal_repository.save_analysis(db, goal, analysis.model_dump_json())
     return analysis
 
+
 def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> Optional[GoalEntity]:
-    return update_goal_in_repository(db, goal_id, request)
+    update_data = request.model_dump(exclude_unset=True)
+    return goal_repository.update_goal(db, goal_id, update_data)
 
 
 def _build_goal_plan_request(goal: GoalEntity) -> GoalPlanRequest:
@@ -102,6 +103,6 @@ def _build_goal_plan_request(goal: GoalEntity) -> GoalPlanRequest:
 def generate_goal_plan(goal: GoalEntity) -> GoalPlanResponse:
     request = _build_goal_plan_request(goal)
     try:
-        return generate_plan(request)
+        return goal_planner.generate_plan(request)
     except ValueError as exc:
         raise GoalPlanGenerationError("Failed to parse generated plan response") from exc

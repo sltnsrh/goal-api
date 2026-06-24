@@ -168,7 +168,7 @@ def test_get_goal_returns_404_for_unknown_id():
 # POST /goals/{goal_id}/analyze
 # ============================================================================
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_analyze_saved_goal_returns_200(mock_analyze):
     mock_analyze.return_value = _MOCK_ANALYSIS
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
@@ -179,7 +179,7 @@ def test_analyze_saved_goal_returns_200(mock_analyze):
     assert data["risk_level"] == "medium"
 
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_analyze_saved_goal_persists_analysis(mock_analyze):
     mock_analyze.return_value = _MOCK_ANALYSIS
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
@@ -190,7 +190,7 @@ def test_analyze_saved_goal_persists_analysis(mock_analyze):
     assert entity.analysis_json is not None
 
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_get_goal_returns_analysis_after_analyze(mock_analyze):
     mock_analyze.return_value = _MOCK_ANALYSIS
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
@@ -212,7 +212,7 @@ def test_analyze_goal_returns_404_for_unknown_id():
     assert response.status_code == 404
 
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_analyze_goal_returns_502_on_ai_error(mock_analyze):
     mock_analyze.side_effect = ValueError("OpenAI timeout")
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
@@ -239,7 +239,7 @@ def test_plan_goal_returns_409_when_not_analyzed():
     assert response.json()["detail"]["code"] == "GOAL_PLAN_NOT_READY"
 
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_plan_goal_returns_409_when_goal_is_not_feasible(mock_analyze):
     mock_analyze.return_value = _MOCK_UNFEASIBLE_ANALYSIS
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
@@ -251,8 +251,8 @@ def test_plan_goal_returns_409_when_goal_is_not_feasible(mock_analyze):
     assert response.json()["detail"]["code"] == "GOAL_PLAN_NOT_READY"
 
 
-@patch("app.services.goal_service.generate_plan")
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_planner.generate_plan")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_plan_goal_returns_200_with_analysis_and_plan(mock_analyze, mock_generate_plan):
     mock_analyze.return_value = _MOCK_ANALYSIS
     mock_generate_plan.return_value = _MOCK_PLAN
@@ -304,7 +304,7 @@ def test_patch_goal_returns_422_for_invalid_values():
     assert response.status_code == 422
 
 
-@patch("app.services.goal_service.analyze_goal")
+@patch("app.services.goal_service.goal_analyzer.analyze_goal")
 def test_patch_goal_clears_previous_analysis(mock_analyze):
     mock_analyze.return_value = _MOCK_ANALYSIS
     goal_id = client.post("/goals", json=_VALID_PAYLOAD).json()["id"]
