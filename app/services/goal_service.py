@@ -1,7 +1,9 @@
 import uuid
-from typing import Optional
+
 from sqlalchemy.orm import Session
+
 from app.db.models import GoalEntity
+from app.repositories import goal_repository
 from app.schemas import (
     AnalysisStatus,
     GoalAnalyzeRequest,
@@ -12,7 +14,6 @@ from app.schemas import (
     GoalPlanResponse,
     GoalUpdateRequest,
 )
-from app.repositories import goal_repository
 from app.services import goal_analyzer, goal_planner
 
 
@@ -37,7 +38,7 @@ def create_new_goal(db: Session, request: GoalCreateRequest) -> GoalEntity:
     return goal_repository.create_goal(db, entity)
 
 
-def get_goal(db: Session, goal_id: str) -> Optional[GoalEntity]:
+def get_goal(db: Session, goal_id: str) -> GoalEntity | None:
     return goal_repository.get_goal_by_id(db, goal_id)
 
 
@@ -83,7 +84,7 @@ def analyze_saved_goal(db: Session, goal: GoalEntity) -> GoalAnalyzeResponse:
     return analysis
 
 
-def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> Optional[GoalEntity]:
+def update_goal(db: Session, goal_id: str, request: GoalUpdateRequest) -> GoalEntity | None:
     update_data = request.model_dump(exclude_unset=True)
     return goal_repository.update_goal(db, goal_id, update_data)
 

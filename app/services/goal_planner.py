@@ -1,7 +1,8 @@
 import os
 from datetime import date, timedelta
-from openai import OpenAI
+
 from dotenv import load_dotenv
+from openai import OpenAI
 from pydantic import BaseModel
 
 from app.schemas import GoalPlanRequest, GoalPlanResponse, Milestone

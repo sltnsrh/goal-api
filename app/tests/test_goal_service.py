@@ -2,9 +2,20 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from app.db.models import GoalEntity
-from app.schemas import AnalysisStatus, GoalAnalyzeResponse, GoalCreateRequest, GoalUpdateRequest, RiskLevel
-from app.services.goal_service import analyze_saved_goal, build_goal_detail_response, create_new_goal, get_goal, update_goal
-
+from app.schemas import (
+    AnalysisStatus,
+    GoalAnalyzeResponse,
+    GoalCreateRequest,
+    GoalUpdateRequest,
+    RiskLevel,
+)
+from app.services.goal_service import (
+    analyze_saved_goal,
+    build_goal_detail_response,
+    create_new_goal,
+    get_goal,
+    update_goal,
+)
 
 _CREATE_REQUEST = GoalCreateRequest(
     goal="Build a portfolio project",

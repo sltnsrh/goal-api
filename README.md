@@ -86,6 +86,19 @@ The database file is created automatically if it does not exist.
 pytest -q
 ```
 
+## Quality checks
+
+```bash
+ruff check app
+pytest -q
+```
+
+Enable the local git hook:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Project structure
 
 - `app/routers` - HTTP endpoints

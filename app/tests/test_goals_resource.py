@@ -1,12 +1,13 @@
 from datetime import date
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
 from unittest.mock import patch
 
-from app.db.database import Base, get_db
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from app.db import models  # noqa: F401
+from app.db.database import Base, get_db
 from app.main import app
 from app.schemas import GoalAnalyzeResponse, GoalPlanResponse, Milestone, RiskLevel
 

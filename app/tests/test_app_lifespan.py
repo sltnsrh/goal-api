@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, inspect
 
-from app.main import app
 from app.db import database
+from app.main import app
 
 
 def test_lifespan_initializes_database(tmp_path, monkeypatch):

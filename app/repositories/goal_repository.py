@@ -1,7 +1,7 @@
-from typing import Optional
+from datetime import UTC, datetime
 
-from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+
 from app.db.models import GoalEntity
 from app.schemas import AnalysisStatus
 
@@ -13,7 +13,7 @@ def create_goal(db: Session, entity: GoalEntity) -> GoalEntity:
     return entity
 
 
-def get_goal_by_id(db: Session, goal_id: str) -> Optional[GoalEntity]:
+def get_goal_by_id(db: Session, goal_id: str) -> GoalEntity | None:
     return db.query(GoalEntity).filter(GoalEntity.id == goal_id).first()
 
 
@@ -32,13 +32,13 @@ def list_goals(db: Session, limit: int, offset: int) -> tuple[list[GoalEntity], 
 def save_analysis(db: Session, goal: GoalEntity, analysis_json: str) -> GoalEntity:
     goal.analysis_json = analysis_json  # type: ignore[assignment]
     goal.analysis_status = AnalysisStatus.analyzed.value
-    goal.analysis_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    goal.analysis_updated_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
     db.refresh(goal)
     return goal
 
 
-def update_goal(db: Session, goal_id: str, update_data: dict[str, object]) -> Optional[GoalEntity]:
+def update_goal(db: Session, goal_id: str, update_data: dict[str, object]) -> GoalEntity | None:
     goal = get_goal_by_id(db, goal_id)
     if goal is None:
         return None

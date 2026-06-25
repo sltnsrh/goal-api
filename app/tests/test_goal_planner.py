@@ -1,9 +1,10 @@
-import pytest
 from datetime import date
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.schemas import GoalAnalyzeResponse, GoalPlanRequest, RiskLevel
-from app.services.goal_planner import _GoalPlanRaw, _MilestoneRaw, _build_user_prompt, generate_plan
+from app.services.goal_planner import _build_user_prompt, _GoalPlanRaw, _MilestoneRaw, generate_plan
 
 _VALID_REQUEST = {
     "goal": "Become a stronger backend engineer",

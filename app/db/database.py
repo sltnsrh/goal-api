@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 SQLITE_DATABASE_PATH = Path(os.getenv("SQLITE_DATABASE_PATH", "./data/goals.db")).expanduser()
 SQLITE_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -28,5 +28,5 @@ def get_db():
 
 
 def init_db() -> None:
-    from app.db import models
+    from app.db import models  # noqa: F401
     Base.metadata.create_all(bind=engine)

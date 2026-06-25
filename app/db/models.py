@@ -1,7 +1,10 @@
 import uuid
+
 from sqlalchemy import Column, DateTime, Integer, String, Text, text
 from sqlalchemy.sql import func
+
 from app.db.database import Base
+
 
 class GoalEntity(Base):
     __tablename__ = "goals"

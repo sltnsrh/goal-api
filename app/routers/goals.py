@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
@@ -23,7 +25,7 @@ _PLAN_NOT_READY = {"code": "GOAL_PLAN_NOT_READY", "message": "Goal must be analy
 def create_goal(
     request: GoalCreateRequest,
     response: Response,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> GoalResponse:
     entity = goal_service.create_new_goal(db, request)
     response.headers["Location"] = f"/goals/{entity.id}"
@@ -32,9 +34,9 @@ def create_goal(
 
 @router.get("", response_model=GoalListResponse)
 def list_goals(
-    limit: int = Query(default=10, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> GoalListResponse:
     items, total = goal_service.list_goals_with_pagination(db, limit, offset)
     return GoalListResponse(
@@ -46,7 +48,7 @@ def list_goals(
 
 
 @router.get("/{goal_id}", response_model=GoalDetailResponse)
-def get_goal(goal_id: str, db: Session = Depends(get_db)) -> GoalDetailResponse:
+def get_goal(goal_id: str, db: Annotated[Session, Depends(get_db)]) -> GoalDetailResponse:
     entity = goal_service.get_goal(db, goal_id)
     if entity is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
@@ -54,7 +56,7 @@ def get_goal(goal_id: str, db: Session = Depends(get_db)) -> GoalDetailResponse:
 
 
 @router.post("/{goal_id}/analyze", response_model=GoalAnalyzeResponse)
-def analyze_goal(goal_id: str, db: Session = Depends(get_db)) -> GoalAnalyzeResponse:
+def analyze_goal(goal_id: str, db: Annotated[Session, Depends(get_db)]) -> GoalAnalyzeResponse:
     entity = goal_service.get_goal(db, goal_id)
     if entity is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
@@ -64,30 +66,33 @@ def analyze_goal(goal_id: str, db: Session = Depends(get_db)) -> GoalAnalyzeResp
         raise HTTPException(
             status_code=502,
             detail={"code": "AI_PROVIDER_ERROR", "message": str(e)},
-        )
+        ) from e
 
 
 @router.post("/{goal_id}/plan", response_model=GoalPlanResponse)
-def plan_goal(goal_id: str, db: Session = Depends(get_db)) -> GoalPlanResponse:
+def plan_goal(goal_id: str, db: Annotated[Session, Depends(get_db)]) -> GoalPlanResponse:
     entity = goal_service.get_goal(db, goal_id)
     if entity is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
     try:
         return goal_service.generate_goal_plan(entity)
     except goal_service.GoalPlanNotReadyError as e:
-        raise HTTPException(status_code=409, detail={"code": _PLAN_NOT_READY["code"], "message": str(e)})
+        raise HTTPException(
+            status_code=409,
+            detail={"code": _PLAN_NOT_READY["code"], "message": str(e)},
+        ) from e
     except goal_service.GoalPlanGenerationError as e:
         raise HTTPException(
             status_code=502,
             detail={"code": "AI_PROVIDER_ERROR", "message": str(e)},
-        )
+        ) from e
 
 
 @router.patch("/{goal_id}", response_model=GoalResponse)
 def update_goal(
     goal_id: str,
     request: GoalUpdateRequest,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> GoalResponse:
     entity = goal_service.update_goal(db, goal_id, request)
     if entity is None:

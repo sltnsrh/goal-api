@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 
 class RiskLevel(str, Enum):
     low = "low"
@@ -69,8 +70,8 @@ class GoalDetailResponse(BaseModel):
     weekly_hours: int
     current_level: str
     analysis_status: AnalysisStatus
-    analysis_updated_at: Optional[datetime] = None
-    analysis: Optional[GoalAnalyzeResponse] = None
+    analysis_updated_at: datetime | None = None
+    analysis: GoalAnalyzeResponse | None = None
 
 
 class GoalPlanRequest(BaseModel):
@@ -78,7 +79,7 @@ class GoalPlanRequest(BaseModel):
     deadline_months: int = Field(gt=0, le=120)
     weekly_hours: int = Field(gt=0, le=168)
     current_level: str = Field(min_length=3, max_length=500)
-    analysis: Optional[GoalAnalyzeResponse] = None
+    analysis: GoalAnalyzeResponse | None = None
 
 
 class GoalPlanResponse(BaseModel):
